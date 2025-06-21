@@ -6,6 +6,19 @@ from dotenv import load_dotenv
 from groq_llm import choose_functions, answer_with_data
 import httpx
 import re
+from flask import Flask
+import threading
+
+
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "Bot is alive!", 200
+
+def run_flask():
+    app.run(host="0.0.0.0", port=10000)
+
 
 load_dotenv()
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
@@ -800,5 +813,9 @@ async def on_message(message):
 
         await message.channel.send(answer[:2000])
 
+if __name__ == "__main__":
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
 
-client.run(DISCORD_BOT_TOKEN)
+    client.run(DISCORD_BOT_TOKEN)
+
