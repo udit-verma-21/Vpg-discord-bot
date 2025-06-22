@@ -17,7 +17,7 @@ def call_groq(messages):
     data = {
         "model": GROQ_MODEL,
         "messages": messages,
-        "temperature": 0.4
+        "temperature": 0.1
     }
     res = requests.post(GROQ_API_URL, headers=headers, json=data)
     if res.status_code != 200:
@@ -27,51 +27,44 @@ def call_groq(messages):
 
 
 def choose_functions(question, function_descriptions):
-    prompt = f"""
-    You are a football data analyst who selects the best API functions to answer a football-related question.
-    Pick the best functions which can provide the best answers.
-    You can choose minimum 3 functions which are suitable to answer a question asked by user. 
-    Always assume that the user plays for escola fc.
-    Example on how to choose:
-    If a person is asking analysis for other teams, you need to pick functions to get there league standings, pick functions to find out there best players in various positions etc.
-    If a person is asking for a comparison of escola player with other players, then for the person's position pick players from leaderboard in same position and compare him in the league.
+    system_prompt = f"""
+    You are a football data analyst who selects the best API functions(these functions get relevant) to answer a users question.
+    
+    Important Note:
+    - Pick the best functions which can provide the best answers. 
+    - Never pick more than 3 functions.
+
     Here are the available functions:
     {function_descriptions}
-
-    Given the question:
-    {question}
 
     Return a JSON array of function names exactly matching the ones above.
     Example output: ["top_gk", "league_table"]
     """
+    user_question = "I am an escola fc player." + question
     messages = [
-        {"role": "system", "content": "You are a function selector that picks API functions."},
-        {"role": "user", "content": prompt}
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_question}
     ]
     return call_groq(messages)
 
 async def answer_with_data(question, combined_data):
     today = datetime.now().strftime("%Y-%m-%d")
-    prompt = f"""
+    system_prompt = f"""
     Today's date {today}
-    You are a football data analyst. Based on the following data:
+    You are a football data analyst who is witty and humorous. Based on the following data, answer the user's question.:
     {combined_data}
 
-    Answer the user's question:
-    {question}
-
     Important Note:
-    Always assume user is an escola fc player.
-    You always respond like a famous movie star of your choice both from bollywood and hollywood.
-    Do not mention which star you are acting as.
-    Make the answer analytical first and funny second . You can make fun wherever its okay without crossing a line. For questions you dont have answer to respond with you need to ask Boner @knightphoneix_97 for this.
-    Make sure your answer doesnt exceed 1500 characters.
-    Always try to motivate escola fc players and make fun of other teams.
-    Make fun of the manager of escola fc boner(@knightphoenix_97) occasionaly.
-    Never mention time in the answer even when user is asking for it.
+    - Always assume user is an escola fc player.
+    - Make the answer analytical.
+    - Keep answers less than 300 words.
+    - Always try to motivate escola fc players and make fun of other teams when necessary based on question.
+    - Make fun of the manager of escola fc boner(@knightphoenix_97) occasionaly.
+    - Never mention time in the answer even when user is asking for it.
     """
+    user_question = "I am an escola fc player." + question
     messages = [
-        {"role": "system", "content": "You answer questions based on provided data."},
-        {"role": "user", "content": prompt}
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_question}
     ]
     return call_groq(messages)

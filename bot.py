@@ -302,7 +302,21 @@ async def leaderboard_highest_rated():
 async def league_table():
     url = "https://api.virtualprogaming.com/public/leagues/sal/table/?season=1&is_history=false"
     async with httpx.AsyncClient() as client:
-        return await fetch_json(client, url)
+        resp = await fetch_json(client, url)
+
+    filtered = []
+    for team in resp:
+        filtered.append({
+            "team_name": team.get("team_name"),
+            "played": team.get("played"),
+            "wins": team.get("wins"),
+            "draws": team.get("draws"),
+            "losses": team.get("losses"),
+            "score_for": team.get("score_for"),
+            "score_against": team.get("score_against"),
+            "points": team.get("points")
+        })
+    return {"data": filtered}
 
 async def get_completed_matches():
     urls = [
@@ -368,7 +382,6 @@ async def escola_scheduled_matches():
             "home_team": match.get("home_name"),
             "away_team": match.get("away_name"),
         })
-    print("FILTERED", filtered)
     return {"data": filtered}
 
 async def escola_completed_matches():
@@ -752,10 +765,8 @@ async def on_message(message):
         user_question = message.content.replace(f'<@!{client.user.id}>', '').strip()
 
         function_desc = build_function_descriptions()
-        print("HERE")
         try:
             funcs_text = choose_functions(user_question, function_desc)
-            print("THESE GOT CHOSEN", funcs_text)
         except Exception as e:
             await message.channel.send(f"Error selecting functions: {e}")
             return
@@ -764,8 +775,6 @@ async def on_message(message):
         if not function_names:
             await message.channel.send("Couldn't find matching data sources to answer your question.")
             return
-        print(f"[DEBUG] function_names: {function_names}")
-        print(f"[DEBUG] function_names types: {[type(fn) for fn in function_names]}")
 
         # Step 2: Call functions concurrently
         print("function names", function_names)
@@ -803,14 +812,14 @@ async def on_message(message):
         combined_data = ""
         for fn, data in zip(function_names, results):
             combined_data += f"=== Data from {fn} ===\n{json.dumps(data, indent=2)}\n\n"
-        combined_data=combined_data[:5700]  
+        combined_data=combined_data[:10000]  
         # Step 4: Ask Groq for final answer
         try:
             answer = await answer_with_data(user_question, combined_data)
         except Exception as e:
-            await message.channel.send(f"Error generating answer: {e}")
+            await message.channel.send("Stop asking so many questions. Let me breathe for a moment.")
             return
-
+        # print("ANSWER", answer)
         await message.channel.send(answer[:2000])
 
 if __name__ == "__main__":
