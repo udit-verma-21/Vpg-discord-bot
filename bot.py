@@ -763,7 +763,7 @@ def build_function_descriptions():
 
 @client.event
 async def on_ready():
-    logger.info(f"Bot is online as {client.user}")
+    logger.info(f"Bot is ready. Logged in as {client.user} ({client.user.id})")
     processed_messages.clear()
     currently_processing.clear()
     print(f"[DEBUG] Cleared message processing caches on startup")
