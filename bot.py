@@ -33,6 +33,8 @@ async def fetch_json(http_client, url):
     resp.raise_for_status()
     return resp.json()
 
+processed_messages = set()
+currently_processing = set()
 
 async def leaderboard_top_gk():
     urls = [
@@ -755,13 +757,27 @@ def build_function_descriptions():
 @client.event
 async def on_ready():
     print(f"Bot is online as {client.user}")
+    processed_messages.clear()
+    currently_processing.clear()
+    print(f"[DEBUG] Cleared message processing caches on startup")
+
 
 @client.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    if client.user in message.mentions:
+    if message.id in processed_messages or message.id in currently_processing:
+        print(f"[DEBUG] Skipping message {message.id} - already processed/processing")
+        return
+
+    if not (client.user in message.mentions):
+        return
+
+    currently_processing.add(message.id)
+
+
+    try:
         user_question = message.content.replace(f'<@!{client.user.id}>', '').strip()
 
         function_desc = build_function_descriptions()
@@ -775,34 +791,6 @@ async def on_message(message):
         if not function_names:
             await message.channel.send("Couldn't find matching data sources to answer your question.")
             return
-
-        # Step 2: Call functions concurrently
-        print("function names", function_names)
-        # for fn in function_names:
-        #     func_obj = FUNCTIONS[fn]["func"]
-        #     print(f"[DEBUG] {fn} -> func: {func_obj}, type: {type(func_obj)}")
-        #     if not asyncio.iscoroutinefunction(func_obj):
-        #         print(f"❌ {fn} is not async function!")
-        #     else:
-        #         print(f"✅ {fn} is async.")
-
-        # try:
-        #     callables = [FUNCTIONS[fn]["func"] for fn in function_names]
-        #     print("[DEBUG] Callables to run:", callables)
-
-        #     tasks = [func() for func in callables]
-        #     print("[DEBUG] Tasks to await:", tasks)
-
-        #     results = await asyncio.gather(*tasks)
-        # except Exception as e:
-        #     await message.channel.send(f"Error fetching data: {e}")
-        #     return
-
-        # try:
-        #     results = await asyncio.gather(*[FUNCTIONS[fn]["func"]() for fn in function_names])
-        # except Exception as e:
-        #     await message.channel.send(f"Error fetching data: {e}")
-        #     return
         tasks = []
         for fn in function_names:
             func = FUNCTIONS[fn]["func"]
@@ -819,8 +807,24 @@ async def on_message(message):
         except Exception as e:
             await message.channel.send("Stop asking so many questions. Let me breathe for a moment.")
             return
-        # print("ANSWER", answer)
         await message.channel.send(answer[:2000])
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error processing message {message.id}: {e}")
+        await message.channel.send("Sorry, something went wrong processing your request.")
+    
+    finally:
+        # Always move from currently_processing to processed, regardless of success/failure
+        currently_processing.discard(message.id)
+        processed_messages.add(message.id)
+        
+        # Clean up old message IDs (keep only last 50 to prevent memory leak)
+        if len(processed_messages) > 50:
+            old_messages = list(processed_messages)[:25]
+            for old_id in old_messages:
+                processed_messages.discard(old_id)
+        
+        print(f"[DEBUG] Finished processing message {message.id}")
 
 if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
