@@ -8,8 +8,15 @@ import httpx
 import re
 from flask import Flask
 import threading
+import logging
 
+logging.basicConfig(
+    level=logging.DEBUG,  # You can change to INFO to reduce noise
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 
+logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 @app.route("/")
@@ -17,7 +24,7 @@ def index():
     return "Bot is alive!", 200
 
 def run_flask():
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=10000, use_reloader = False)
 
 
 load_dotenv()
@@ -756,7 +763,7 @@ def build_function_descriptions():
 
 @client.event
 async def on_ready():
-    print(f"Bot is online as {client.user}")
+    logger.info(f"Bot is online as {client.user}")
     processed_messages.clear()
     currently_processing.clear()
     print(f"[DEBUG] Cleared message processing caches on startup")
@@ -768,11 +775,13 @@ async def on_message(message):
         return
 
     if message.id in processed_messages or message.id in currently_processing:
-        print(f"[DEBUG] Skipping message {message.id} - already processed/processing")
+        logger.debug(f"Skipping message {message.id} - already processed/processing")
+
         return
 
     if not (client.user in message.mentions):
         return
+    logger.info(f"Processing message {message.id}: {message.content}")
 
     currently_processing.add(message.id)
 
@@ -815,6 +824,8 @@ async def on_message(message):
     
     finally:
         # Always move from currently_processing to processed, regardless of success/failure
+        logger.debug(f"Finished processing message {message.id}")
+
         currently_processing.discard(message.id)
         processed_messages.add(message.id)
         
@@ -827,6 +838,7 @@ async def on_message(message):
         print(f"[DEBUG] Finished processing message {message.id}")
 
 if __name__ == "__main__":
+    logger.info("Launching bot and Flask server")
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
 
