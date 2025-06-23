@@ -787,11 +787,23 @@ async def on_message(message):
 
 
     try:
+        user_nickname = None
+        if message.guild:  # Check if message is from a server (not DM)
+            member = message.guild.get_member(message.author.id)
+            if member:
+                user_nickname = member.nick or member.display_name
+            else:
+                # Fallback if member not found
+                user_nickname = message.author.display_name
+        else:
+            # If it's a DM, use display_name
+            user_nickname = message.author.display_name
         user_question = message.content.replace(f'<@!{client.user.id}>', '').strip()
 
         function_desc = build_function_descriptions()
+        user_question_with_name = "I am " + user_nickname + "." + user_question
         try:
-            funcs_text = choose_functions(user_question, function_desc)
+            funcs_text = choose_functions(user_question_with_name, function_desc)
         except Exception as e:
             await message.channel.send(f"Error selecting functions: {e}")
             return
@@ -809,14 +821,17 @@ async def on_message(message):
         combined_data = ""
         for fn, data in zip(function_names, results):
             combined_data += f"=== Data from {fn} ===\n{json.dumps(data, indent=2)}\n\n"
-        combined_data=combined_data[:10000]  
+        combined_data=combined_data[:40000]  
         # Step 4: Ask Groq for final answer
         try:
-            answer = await answer_with_data(user_question, combined_data)
+            answer = await answer_with_data(user_question_with_name, combined_data)
         except Exception as e:
             await message.channel.send("Stop asking so many questions. Let me breathe for a moment.")
             return
-        await message.channel.send(answer[:2000])
+        cleaned_text = re.sub(r"<think>.*?</think>", "", answer, flags=re.DOTALL)
+        cleaned_text = cleaned_text.strip()
+
+        await message.channel.send(cleaned_text[:2000])
     
     except Exception as e:
         print(f"[ERROR] Unexpected error processing message {message.id}: {e}")
