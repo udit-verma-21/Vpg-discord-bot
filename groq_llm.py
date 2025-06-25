@@ -7,7 +7,7 @@ load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "mistral-saba-24b"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 # GROQ_API_URL = "https://api.together.xyz/v1/chat/completions"
 # GROQ_MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 # TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
